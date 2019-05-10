@@ -14,27 +14,29 @@ import os
 class Sokoban:
     def __init__(self, rle):
         self.rle = rle
-        self.board = Sokoban.parseLevelString(rle)
+        self.board, self.pos = Sokoban.parseLevelString(rle)
 
     def __str__(self):
         s = ''
         for row in self.board:
             for c in row:
-                s += c
+                s += c + ' '
             s += '\n'
+        s += str(self.pos)
         return s
 
     def press(self, key):
         if key == 'KEY_RIGHT':
-            self.move('right')
+            return True
     
     def move(self, move):
         self.pos = Sokoban.move_board(self.board, self.pos, move, False)
 
     @staticmethod
     def parseLevelString(rle):
-        i = 0
+        i, j = 0, 0
         x = 0
+        pos = (0, 0)
         matrix = [[]]
 
         while i < len(rle):
@@ -51,17 +53,23 @@ class Sokoban:
 
                 for j in range(0, n):
                     matrix[x].append(t)
+                    j += 1
                 
             else:
                 if c == '|':
                     matrix.append([])
                     x += 1
+                    j = 0
+
                 else:
+                    if c == '@':
+                        pos = (x, j)
                     matrix[x].append(c)
+                    j += 1
 
             i += 1
         
-        return matrix
+        return (matrix, pos)
 
 levels = [
   '11#|#@-$5-.#|11#',
@@ -69,12 +77,12 @@ levels = [
 ]
 
 def main(win):
-    sokoban = Sokoban(levels[0])
-    print(sokoban)
+    sokoban = Sokoban(levels[1])
     win.nodelay(True)
     key=""
     win.clear()                
-    win.addstr("Detected key:")
+    win.addstr("Detected key:\n")
+    win.addstr(str(sokoban))
     while 1:          
         try:                 
             key = win.getkey()
