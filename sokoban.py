@@ -9,17 +9,17 @@ class Sokoban:
     PLAYERONGOAL = '+'
     BOX = '$'
     BOXONGOAL = '!'
-    GOAL = '.'
+    GOAL = 'o'
     FLOOR = '-'
 
     _KEYBIND = {
         'KEY_RIGHT': ('move', 'right'),
         'KEY_LEFT': ('move', 'left'),
         'KEY_UP': ('move', 'up'),
-        'KEY_DOWN': ('move', 'down')
+        'KEY_DOWN': ('move', 'down'),
+        'u': ('reset')
     }
-    _WALKABLE = set(['-', '.'])
-
+    
     def __init__(self, rle):
         self.rle = rle
         self.board, self.pos = Sokoban.parseLevelString(rle)
@@ -40,6 +40,8 @@ class Sokoban:
         bind = Sokoban._KEYBIND[str(key)]
         if bind[0] == 'move':
             self.move(bind[1])
+        elif bind[0] == 'reset':
+            self.board, self.pos = Sokoban.parseLevelString(self.rle)
         
         return True
     
@@ -52,6 +54,7 @@ class Sokoban:
             board = deepcopy(board)
         y, x = pos
 
+        # Horizontal moves
         if (move == 'right' and x+1 < len(board[y])) or (move == 'left' and x-1 >= 0):
             nx = x+1 if move == 'right' else x-1
 
@@ -73,6 +76,27 @@ class Sokoban:
 
                 board[y][nx] = Sokoban.PLAYER
                 board[y][x] = Sokoban.FLOOR
+            
+            elif board[y][nx] == Sokoban.BOXONGOAL:
+                if move == 'right' and nx+1 <= len(board[y]):
+                    if board[y][nx+1] == Sokoban.GOAL:
+                        board[y][nx+1] = Sokoban.BOXONGOAL
+                    elif board[y][nx+1] == Sokoban.FLOOR:
+                        board[y][nx+1] = Sokoban.BOX
+                    else:
+                        return board if immutable else pos
+
+                elif move == 'left' and nx-1 >= 0:
+                    if board[y][nx-1] == Sokoban.GOAL:
+                        board[y][nx-1] = Sokoban.BOXONGOAL
+                    elif board[y][nx-1] == Sokoban.FLOOR:
+                        board[y][nx-1] = Sokoban.BOX
+                    else:
+                        return board if immutable else pos
+
+
+                board[y][nx] = Sokoban.PLAYERONGOAL
+                board[y][x] = Sokoban.FLOOR
 
             elif board[y][nx] == Sokoban.GOAL:
                 board[y][nx] = Sokoban.PLAYERONGOAL
@@ -83,31 +107,55 @@ class Sokoban:
             
             pos = (y, nx)
 
-        # TODO: down is not working
+        # Vertical moves
         elif (move == 'up' and y-1 >= 0) or (move == 'down' and y+1 < len(board)):
             ny = y-1 if move == 'up' else y+1
 
             if board[ny][x] == Sokoban.FLOOR:
                 board[ny][x] = Sokoban.PLAYER
-                board[y][x] = Sokoban.FLOOR
+                board[y][x] = Sokoban.GOAL if board[y][x] == Sokoban.PLAYERONGOAL else Sokoban.FLOOR
             
             elif board[ny][x] == Sokoban.GOAL:
                 board[ny][x] = Sokoban.PLAYERONGOAL
                 board[y][x] = Sokoban.GOAL if board[y][x] == Sokoban.PLAYERONGOAL else Sokoban.FLOOR
 
-            elif board[ny][x] == Sokoban.BOX: 
+            elif board[ny][x] == Sokoban.BOX:
                 if move == 'down' and ny+1 < len(board):
                     if board[ny+1][x] == Sokoban.GOAL:
                         board[ny+1][x] = Sokoban.BOXONGOAL
                     elif board[ny+1][x] == Sokoban.FLOOR:
                         board[ny+1][x] = Sokoban.BOX
+                    else:
+                        return board if immutable else pos
+
                 elif move == 'up' and ny-1 >= 0:
                     if board[ny-1][x] == Sokoban.GOAL:
                         board[ny-1][x] = Sokoban.BOXONGOAL
                     elif board[ny-1][x] == Sokoban.FLOOR:
                         board[ny-1][x] = Sokoban.BOX
+                    else:
+                        return board if immutable else pos
 
                 board[ny][x] = Sokoban.PLAYER
+                board[y][x] = Sokoban.FLOOR
+
+            elif board[ny][x] == Sokoban.BOXONGOAL:
+                if move == 'down' and ny+1 < len(board):
+                    if board[ny+1][x] == Sokoban.GOAL:
+                        board[ny+1][x] = Sokoban.BOXONGOAL
+                    elif board[ny+1][x] == Sokoban.FLOOR:
+                        board[ny+1][x] = Sokoban.BOX
+                    else:
+                        return board if immutable else pos
+                elif move == 'up' and ny-1 >= 0:
+                    if board[ny-1][x] == Sokoban.GOAL:
+                        board[ny-1][x] = Sokoban.BOXONGOAL
+                    elif board[ny-1][x] == Sokoban.FLOOR:
+                        board[ny-1][x] = Sokoban.BOX
+                    else:
+                        return board if immutable else pos
+
+                board[ny][x] = Sokoban.PLAYERONGOAL
                 board[y][x] = Sokoban.FLOOR
 
             else:
@@ -157,9 +205,9 @@ class Sokoban:
         return (matrix, pos)
 
 levels = [
-  '11#|#@-$5-.#|11#',
-  '7#|#--.--#|#-$.--#|#--#$-#|#-$#--#|#--.$-#|#@-.--#|7#',
-  '8#|#--@#-.#|#-3#--#|#-#.#$-#|#3-#--#|3#$#--#|--#-$--#|--#--.-#|--#--3#|--4#'
+  '11#|#@-$5-o#|11#',
+  '7#|#--o--#|#-$o--#|#--#$-#|#-$#--#|#--o$-#|#@-o--#|7#',
+  '8#|#--@#-o#|#-3#--#|#-#o#$-#|#3-#--#|3#$#--#|--#-$--#|--#--o-#|--#--3#|--4#'
 ]
 
 def main(win):
@@ -177,6 +225,7 @@ def main(win):
 
             win.clear()
             win.addstr(str(sokoban))
+            win.addstr(str(key))
         except Exception as e:  
            # No input   
            pass 
