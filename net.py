@@ -8,10 +8,11 @@ class Node:
         self.puzzle = puzzle
         self.children = []
         self.parent = parent
+        self.depth = parent.depth + 1 if parent else 0
         Node._ID = Node._ID + 1
     
     def __lt__(self, other):
-        return self.puzzle.heu() < other.puzzle.heu()
+        return (self.depth + self.puzzle.heu()) < (other.depth + other.puzzle.heu())
     
     def add_child(self, puzzle: 'Puzzle'):
         self.children.append(Node(puzzle, self))
@@ -21,87 +22,38 @@ class Node:
         for puzzle in expand.values():
             if puzzle is not None:
                 self.add_child(puzzle)
-    
-    # Breadth-first search
-    def bfs(self, goal: 'Puzzle'):
-        q = queue.Queue()
-        visited = set() # set of Puzzles
-        
-        q.put(self)
-        
-        while not q.empty():
-            node = q.get()
-            print(node.puzzle)
-            if node.puzzle in visited:
-                continue
-                        
-            visited.add(node.puzzle)
-            
-            if node.puzzle == goal:
-                return node
-            
-            node.expand()
-            for p in node.children:
-                if p.puzzle not in visited:
-                    q.put(p)
-        
-        return None # what??
-    
-    # Depth-first search
-    def dfs(self, goal: 'Puzzle'):
-        stack = [self]
-        visited = set()
-        
-        while stack:
-            node = stack.pop()
-            if node.puzzle in visited:
-                continue
-                
-            if node.puzzle == goal:
-                return node
-            
-            visited.add(node.puzzle)
-            node.expand()
-            for child in node.children:
-                if child.puzzle not in visited:
-                    stack.append(child)
-        
-        return None
-        
+
     # A* search
-    def astar(self, goal=None):            
-        q = [self]
-        visited = set()
+    def astar(self, goal=None):
+        q, visited = [self], set()
+        heapq.heapify(q)
         counter = 0
         
         while q:
             node = heapq.heappop(q)
-            # print("node:",node)
-            
-            if node in visited:
-                continue
 
-            if goal:
-                if node.puzzle == goal:
-                    return node
-            else:
-                if node.puzzle.heu() == 0:
-                    return node
-            
-            visited.add(node.puzzle)
-            node.expand()
-            for child in node.children:
-                if child.puzzle not in visited:
-                    heapq.heappush(q, child)
+            if node not in visited:
+                counter += 1
+                if (goal is not None and node.puzzle == goal) or (goal is None and node.puzzle.heu() == 0):
+                    return (node, counter)
+                if counter % 1000 == 0:
+                    f = open("demofile2.txt", "a")
+                    f.write(str(len(q)) + " " + str(node.puzzle.heu()) + "\n")
+                    f.close()
                 
-            counter += 1
+                visited.add(node.puzzle)
+                node.expand()
+                for child in node.children:
+                    if child.puzzle not in visited:
+                        heapq.heappush(q, child)
+                    
         
         return None
     
     def __str__(self):
         return str(self.puzzle)
     
-    def branch(self):
+    def from_top(self):
         node = self
         stack = []
         while node.parent is not None:
@@ -109,6 +61,6 @@ class Node:
             node = node.parent
 
         return stack
-        # print(len(stack), 'moves were required.')
+        # print(len(stack), 'FOUNDFOUNDmoves were required.')
         # while len(stack) > 0:
         #     print(stack.pop())

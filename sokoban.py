@@ -1,7 +1,8 @@
 import curses
 import os
-import time
+import sys
 
+from random import randint
 from copy import deepcopy
 from net import Node
 
@@ -65,6 +66,17 @@ class Sokoban:
     def __hash__(self):
         return hash(Sokoban.boardstr(self.board))
 
+    def stuck(self):
+        for box in self.boxes:
+            y, x = box
+            ul = self.board[y-1][x] == Sokoban.WALL and self.board[y][x-1] == Sokoban.WALL
+            ur = self.board[y-1][x] == Sokoban.WALL and self.board[y][x+1] == Sokoban.WALL
+            dl = self.board[y+1][x] == Sokoban.WALL and self.board[y][x-1] == Sokoban.WALL
+            dr = self.board[y+1][x] == Sokoban.WALL and self.board[y][x+1] == Sokoban.WALL
+            if ul or ur or dl or dr:
+                return True
+        return False
+
     def press(self, key):
         if key == os.linesep:
             return False
@@ -100,8 +112,7 @@ class Sokoban:
     def heu(self):
         goals = self.goals
         boxes = self.boxes
-        # print("goals", self.goals)
-        # print("boxes", self.boxes)
+
         if len(goals) != len(boxes):
             raise Exception('goals and boxes arrays must be of same length')
 
@@ -110,9 +121,9 @@ class Sokoban:
             goal = goals[i]
             box = boxes[i]
 
-            h += abs(goal[0] - box[0]) + abs(goal[1] - box[1])  
-
-        # print("h", h)      
+            h += abs(goal[0] - box[0]) + abs(goal[1] - box[1])
+        
+        # return h if not self.stuck() else sys.maxsize
         return h
 
     @staticmethod
@@ -138,10 +149,6 @@ class Sokoban:
                     else:
                         return None if immutable else pos
 
-                    if not immutable:
-                        sokoban.boxes[sokoban.boxes.index((y, nx))] = (y, nx+1)
-                        sokoban.boxes.sort()
-
                 elif move == 'left' and nx-1 >= 0:
                     if board[y][nx-1] == Sokoban.GOAL:
                         board[y][nx-1] = Sokoban.BOXONGOAL
@@ -150,9 +157,8 @@ class Sokoban:
                     else:
                         return None if immutable else pos
 
-                    if not immutable:
-                        sokoban.boxes[sokoban.boxes.index((y, nx))] = (y, nx-1)
-                        sokoban.boxes.sort()
+                sokoban.boxes[sokoban.boxes.index((y, nx))] = (y, nx-1 if move == 'left' else nx+1)
+                sokoban.boxes.sort()
 
                 board[y][nx] = Sokoban.PLAYER
                 board[y][x] = Sokoban.GOAL if board[y][x] == Sokoban.PLAYERONGOAL else Sokoban.FLOOR
@@ -166,10 +172,6 @@ class Sokoban:
                     else:
                         return None if immutable else pos
 
-                    if not immutable:
-                        sokoban.boxes[sokoban.boxes.index((y, nx))] = (y, nx+1)
-                        sokoban.boxes.sort()
-
                 elif move == 'left' and nx-1 >= 0:
                     if board[y][nx-1] == Sokoban.GOAL:
                         board[y][nx-1] = Sokoban.BOXONGOAL
@@ -178,16 +180,15 @@ class Sokoban:
                     else:
                         return None if immutable else pos
 
-                    if not immutable:
-                        sokoban.boxes[sokoban.boxes.index((y, nx))] = (y, nx-1)
-                        sokoban.boxes.sort()
+                sokoban.boxes[sokoban.boxes.index((y, nx))] = (y, nx-1 if move == 'left' else nx+1)
+                sokoban.boxes.sort()
 
                 board[y][nx] = Sokoban.PLAYERONGOAL
-                board[y][x] = Sokoban.FLOOR
+                board[y][x] = Sokoban.GOAL if board[y][x] == Sokoban.PLAYERONGOAL else Sokoban.FLOOR
 
             elif board[y][nx] == Sokoban.GOAL:
                 board[y][nx] = Sokoban.PLAYERONGOAL
-                board[y][x] = Sokoban.FLOOR
+                board[y][x] = Sokoban.GOAL if board[y][x] == Sokoban.PLAYERONGOAL else Sokoban.FLOOR
             
             else:
                 return None if immutable else pos
@@ -215,10 +216,6 @@ class Sokoban:
                     else:
                         return None if immutable else pos
 
-                    if not immutable:
-                        sokoban.boxes[sokoban.boxes.index((ny, x))] = (ny+1, x)
-                        sokoban.boxes.sort()
-
                 elif move == 'up' and ny-1 >= 0:
                     if board[ny-1][x] == Sokoban.GOAL:
                         board[ny-1][x] = Sokoban.BOXONGOAL
@@ -227,9 +224,8 @@ class Sokoban:
                     else:
                         return None if immutable else pos
 
-                    if not immutable:
-                        sokoban.boxes[sokoban.boxes.index((ny, x))] = (ny-1, x)
-                        sokoban.boxes.sort()
+                sokoban.boxes[sokoban.boxes.index((ny, x))] = (ny-1 if move == 'up' else ny+1, x)
+                sokoban.boxes.sort()
 
                 board[ny][x] = Sokoban.PLAYER
                 board[y][x] = Sokoban.GOAL if board[y][x] == Sokoban.PLAYERONGOAL else Sokoban.FLOOR
@@ -250,8 +246,12 @@ class Sokoban:
                     else:
                         return board if immutable else pos
 
+                sokoban.boxes[sokoban.boxes.index((ny, x))] = (ny-1 if move == 'up' else ny+1, x)
+                sokoban.boxes.sort()
+
                 board[ny][x] = Sokoban.PLAYERONGOAL
-                board[y][x] = Sokoban.FLOOR
+                board[y][x] = Sokoban.GOAL if board[y][x] == Sokoban.PLAYERONGOAL else Sokoban.FLOOR
+                #board[y][x] = Sokoban.FLOOR
 
             else:
                 return None if immutable else pos
@@ -304,94 +304,115 @@ class Sokoban:
         return s
 
 levels = [
+  '11#|#ooo$@-$5-o#|11#',
   '11#|#@-$5-o#|11#',
+  '--3#|3#o#|#o$$##|##@$o#|-5#',
+  '3-4#|3-#--#|3-#--#|3-#-$##|5#--3#|#-!5-+#|#3-6#|5#',
   '7#|#--o--#|#-$o--#|#--#$-#|#-$#--#|#--o$-#|#@-o--#|7#',
   '8#|#--@#-o#|#-3#--#|#-#o#$-#|#3-#--#|3#$#--#|--#-$--#|--#--o-#|--#--3#|--4#',
+  '5#|#3-7#|#-#-##--oo#|#-$--$-o!o#|3#--#-!oo#|--#-7#|--#-#4-#|--#-#-$$-#|--#-$-$@-#|--#3-4#|--5#',
+  '8#|#@-#3-#|##$#3-#|#--#3-#|#--##$##|#-o--o-#|#--#3-#|8#',
+  '-6#|##4-#|#--##$#|#5-3#|##-#-oo+#|-#$7#|-#-#5-#|##-#-#$#-#|#--#5-#|#5-4#|#3-3#|5#',
+  '7#|#3o$-##|#3o3-#|##-$-$-#|-3#-3#|-#@$-$-#|-#-$3-#|-#4-##|-6#',
+  '12#|#@-#--$-3o#|##$#$-$-3o#|#3-$6-#|#9-$#|8#3-#|7-5#',
+  '6#|#o#-@#|#o#$-##|#o#-$-#|#-$3-#|#3-3#|5#',
+  '9#|#3o$3-#|#3o$3-#|5#-$##|4-#--#|4-#$-#|4-#-$#|4-#$-#|4-#@-#|4-4#',
+  '12-5#|12-#3-#|-12#-#-#|-#o10-!--#|-12#-3#|5-#3-#--#-#|5-#-$@#--#-#|5-#3-#--#-#|8#$4#-3#|#--!9-!--#|#-#-4#--3#-#-#|#3-#--#o-#-#3-#|5#--4#-5#',
+  '4-5#|5#3o#|#-$5-#|#3-#$--#|5#--##|#-@-#$$#|#3-#--#|#3-#$-##|##--$3-#|#3o#3-#|9#',
+  '10#|#o#4-@-#|#o#$$#-$-#|#o#--#$-##|#o$--#-$#|#o#--#--#|#o#5-#|#4-#--#|#--6#|4#',
+  '7#|#o#3-#|#o#-$-#|#@--$-#|#o-$$-#|#o#-$-#|#o#3-#|7#',
+  '6#|#4-#|#-$--#|#-$@-#|#-#!##-4#|#-#o##-#--#|#--!-#-#$-#|#-#o-#-#--#|#-#o-#-#-3#|#-#o-3#3-#|#8-$-#|3#--7#|--4#',
+  '3-4#|3-#--7#|3-#3-$4-#|3-#--3#-$-#|-3#--#-#$--#|-#@3-#-#-$-#|-##$$-#-#--$#|##-$--#-#--o#|#o-#--#-5#|#5o#|#-o4#|4#',
+  '12#|#@9-#|#--$-$-$-$-#|#--##$3#$-#|#3-6o-#|12#',
+  '-7#|##-o--@#|#-o-#o-#|#-$##--#|#-$--$-#|#--##--#|8#',
+  '10#|#3-o4-#|#-##$3#-#|#-#3-o#-#|#-#-##-#-#|#-#-@#$$-#|#-4#-#-#|#--o3-#-#|#-#$#--#-#|#--!3-#o#|10#',
+  '5#--5#|#3-#--#3-#|#-@-#--#-$-#|#3-#--#3-#|##$##--#3-#|#3-#--#3-#|#3-5#$##|#3-o!oo3-#|#3-4#3-#|#3-4#3-#|12#',
+  '11#|#@3-#4-#|#-$-o$o-$-#|#4-#4-#|#-o-3#-o-#|##$##!##$##|#-o-3#-o-#|#4-#4-#|#-$-o$o-$-#|#4-#4-#|11#',
+  '-4#|-#--4#|-#5-#|##-##--#|#--##-##|#5-o#|5#-##|#@3-$#|4#--#|3-4#',
+  '--4#|3#--#|#3-$##|#3-$o#|4#+-#|3-4#',
+  '--4#--4#|3#--#--#--#|#3-$4#$-3#|#3-$o!6-#|4#o@##-#o--#|3-5#3-3#|7-5#',
+  '-8#|-#--##--##|##7-#|#-!-3#--#|#-!-#-#--#|#-!-#-#$-#|#-!-#-#--#|#-!-#-4#|#@!-#|#-o-#|5#',
+  '5#|#oo@#|#oo-#|#oo-5#|#3o#3-#--5#|##-##$#-4#3-#|-#-$5-#-$-#-#|-#4-#-$6-#|-6#-$#$$4#|6-#-$-$-#|6-#5-#|6-7#',
+  '5#-9#|#3-#-#3-#3-#|#-#-3#$#3-$-#|#4-$5-#--#|3#$3#$5#-#|--#--o--#3-#-#|--#$5o-$3-#|--#--o$-#3-3#|--3#o7#|4-#o#|4-#$#|4-#@#|4-3#',
+  '10#|#@--$-o--##|#3-##-#--#|##--o#-##-#|-#$$##-o#-#|-#-o-##$#-#|-#3-o-$--#|-##$##-$--#|-#-o##3-##|-#-o3-3#|-7#',
+  '9-7#|4-6#5-3#|-4#4-$7-#|-#6-#-$--3#$##|-#6-#o#--#4-#|3#$5#o4#$3-#|#@5-5o$4-##|4#$-3#o5#--#|3-#--#-#o#3-##$#|3-4#-#-3#-#--#|8-#3-3#-##|8-#$#5-#|8-#3-5#|8-5#',
+  '8#|#6-#|#--$3-#|#-$$-$-#|#-@##$-#|3#--$-#|#3o-$-#|#4o3#|6#',
+  '9#|#-5o-#|#-$3#$-#|#3-$3-#|#-$-@-$-#|4#$4#|#--$-$--#|#7-#|#-$3#$-#|#-5o-#|9#',
+  '6-5#|6-#3-4#|7#-#o3-#|#--#--#-##3-#|#-$3-#--$--##|#--##-4#$-#|#@-#3-o-o--#|#-$#-4#-3#|#-$5-$3o#|13#'
 ]
 
 def main(win):
     win.nodelay(True)
     key=""
     win.clear()
-    
-    sokoban = Sokoban(Sokoban.parse(levels[1]))
-    root = Node(sokoban)
-    win.addstr('Loading...')
-    node = root.astar()
-    # win.clear()
 
-    if node is None:
-        win.addstr('Puzzle had no solution.')
-    else:
-        win.addstr('Solution:\n')
-        stack = node.branch()
+    mode = 0 if len(sys.argv) == 1 else sys.argv[1]
+    levelidx = 0 if len(sys.argv) == 1 else (randint(0, len(levels)) if sys.argv[2] == 'random' else int(sys.argv[2]))
+    print(f"Solving level {levelidx}")
+    sokoban = Sokoban(Sokoban.parse(levels[levelidx]))
 
-        while stack:
-            try:
+    if mode == 'solve':
+        try:
+            root = Node(sokoban)
+            win.addstr('Hold on...')
+            win.addstr(levels[levelidx])
+            node, count = root.astar()
+            i = 1
+
+            if node is None:
+                win.addstr('Puzzle had no solution.')
+            else:
+                win.clear()
+                win.addstr(f'I just solved level {levelidx}!\n')
+                stack = node.from_top()
+                moves = len(stack)
+                win.addstr(f"\n{str(moves)} moves were required.")
+                win.addstr(f"\n{str(count)} nodes were visited.")
+                
+                while stack:
+                    try:
+                        key = win.getkey()
+
+                        if key == os.linesep:
+                            break
+
+                        win.clear()
+                        move = stack.pop()
+                        win.addstr(f'Solving level {levelidx}!\n')
+                        win.addstr(f'Move {i}:\n')
+                        win.addstr(str(move))
+                        win.addstr(f"\n{str(moves)} moves were required.")
+                        i+=1
+                    except Exception as e:
+                        pass
+        except Exception as e:
+            win.addstr(str(e))
+            win.addstr(f"Level {levelidx}")
+
+    elif mode == 'play':
+        moves = 0
+        while 1:          
+            try:                 
                 key = win.getkey()
-
-                if key == os.linesep:
+                moves += 1
+            
+                if not sokoban.press(str(key)):
                     break
 
                 win.clear()
-                win.addstr(str(stack.pop()))
-            except Exception as e:
-                pass
-
-    # win.addstr(str(sokoban))
-    # while 1:          
-    #     try:                 
-    #         key = win.getkey()
-           
-    #         if not sokoban.press(str(key)):
-    #             break
-
-    #         win.clear()
-    #         win.addstr(str(sokoban))
-    #         win.addstr('\n')
-    #         win.addstr(str(sokoban.boxes))
-    #         win.addstr('\n')
-    #         win.addstr(str(sokoban.goals))
-    #         win.addstr('\n')
-    #         win.addstr(str(sokoban.heu()))
-    #     except Exception as e:  
-    #     #    No input   
-    #        pass 
+                win.addstr(f"LEVEL {levelidx}\n")
+                win.addstr(str(sokoban))
+                win.addstr('\n')
+                win.addstr("boxes: " + str(sokoban.boxes))
+                win.addstr('\n')
+                win.addstr("goals: " + str(sokoban.goals))
+                win.addstr('\n')
+                win.addstr(str(sokoban.heu()))
+                win.addstr(f"you've moved {moves} times")
+                if(sokoban.stuck()):
+                    win.addstr("\nYou're stuck!")
+            except Exception as e:  
+            #    No input   
+                pass 
 
 curses.wrapper(main)
-
-
-
-# DEBUGGING MAIN
-# sokoban = Sokoban(Sokoban.parse(levels[1]))
-# print(sokoban)
-# sokoban.move('right')
-# print(sokoban.heu())
-# sokoban.move('right')
-# print(sokoban.heu())
-# sokoban.move('right')
-# print(sokoban.heu())
-# sokoban.move('right')
-# print(sokoban.heu())
-# sokoban.move('right')
-# print(sokoban.heu())
-# sokoban.press('u')
-# print(sokoban)
-
-# for key, value in sokoban.expand().items():
-#     if value is not None:
-#         print(key, '\n', Sokoban.boardstr(value))
-#     else:
-#         print("can't move", key)
-
-# sokoban = Sokoban(Sokoban.parse(levels[2]))
-# root = Node(sokoban)
-# print(sokoban.goals)
-# print(sokoban.boxes)
-
-# node = root.astar()
-# if node is None:
-#     print('Puzzle had no solution.')
-# else:
-#     print('Solution:')
-#     node.branch()
