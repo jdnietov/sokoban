@@ -6,7 +6,6 @@ from random import randint
 from copy import deepcopy
 from net import Node
 
-
 class Sokoban:
     WALL = '#'
     PLAYER = '@'
@@ -23,7 +22,7 @@ class Sokoban:
         'KEY_DOWN': ('move', 'down'),
         'u': ('reset', '')
     }
-    
+
     def __init__(self, board):
         self.original = board
         self.board = deepcopy(board)
@@ -47,7 +46,6 @@ class Sokoban:
                     self.goals.append((j, i))
                     self.pos = (j, i)
 
-
         self.goals.sort()
         self.boxes.sort()
 
@@ -69,12 +67,13 @@ class Sokoban:
     def stuck(self):
         for box in self.boxes:
             y, x = box
-            ul = self.board[y-1][x] == Sokoban.WALL and self.board[y][x-1] == Sokoban.WALL
-            ur = self.board[y-1][x] == Sokoban.WALL and self.board[y][x+1] == Sokoban.WALL
-            dl = self.board[y+1][x] == Sokoban.WALL and self.board[y][x-1] == Sokoban.WALL
-            dr = self.board[y+1][x] == Sokoban.WALL and self.board[y][x+1] == Sokoban.WALL
-            if ul or ur or dl or dr:
-                return True
+            if self.board[y][x] == Sokoban.BOX:
+                ul = self.board[y-1][x] == Sokoban.WALL and self.board[y][x-1] == Sokoban.WALL
+                ur = self.board[y-1][x] == Sokoban.WALL and self.board[y][x+1] == Sokoban.WALL
+                dl = self.board[y+1][x] == Sokoban.WALL and self.board[y][x-1] == Sokoban.WALL
+                dr = self.board[y+1][x] == Sokoban.WALL and self.board[y][x+1] == Sokoban.WALL
+                if ul or ur or dl or dr:
+                    return True
         return False
 
     def press(self, key):
@@ -108,22 +107,21 @@ class Sokoban:
             'right': Sokoban(boards[3]) if boards[3] is not None else None,
         }
 
-
+    # distancia de las cajas hacia su objetivo desocupado mas cercano
     def heu(self):
-        goals = self.goals
-        boxes = self.boxes
+        boxes = [box for box in self.boxes if not box in self.goals]
+        goals = [goal for goal in self.goals if not goal in self.boxes]
 
         if len(goals) != len(boxes):
             raise Exception('goals and boxes arrays must be of same length')
 
         h = 0
-        for i in range(len(self.goals)):
+        for i in range(len(goals)):
             goal = goals[i]
             box = boxes[i]
 
             h += abs(goal[0] - box[0]) + abs(goal[1] - box[1])
         
-        # return h if not self.stuck() else sys.maxsize
         return h
 
     @staticmethod
@@ -304,22 +302,21 @@ class Sokoban:
         return s
 
 levels = [
-  '11#|#ooo$@-$5-o#|11#',
-  '11#|#@-$5-o#|11#',
-  '--3#|3#o#|#o$$##|##@$o#|-5#',
-  '3-4#|3-#--#|3-#--#|3-#-$##|5#--3#|#-!5-+#|#3-6#|5#',
-  '7#|#--o--#|#-$o--#|#--#$-#|#-$#--#|#--o$-#|#@-o--#|7#',
-  '8#|#--@#-o#|#-3#--#|#-#o#$-#|#3-#--#|3#$#--#|--#-$--#|--#--o-#|--#--3#|--4#',
-  '5#|#3-7#|#-#-##--oo#|#-$--$-o!o#|3#--#-!oo#|--#-7#|--#-#4-#|--#-#-$$-#|--#-$-$@-#|--#3-4#|--5#',
-  '8#|#@-#3-#|##$#3-#|#--#3-#|#--##$##|#-o--o-#|#--#3-#|8#',
-  '-6#|##4-#|#--##$#|#5-3#|##-#-oo+#|-#$7#|-#-#5-#|##-#-#$#-#|#--#5-#|#5-4#|#3-3#|5#',
-  '7#|#3o$-##|#3o3-#|##-$-$-#|-3#-3#|-#@$-$-#|-#-$3-#|-#4-##|-6#',
-  '12#|#@-#--$-3o#|##$#$-$-3o#|#3-$6-#|#9-$#|8#3-#|7-5#',
-  '6#|#o#-@#|#o#$-##|#o#-$-#|#-$3-#|#3-3#|5#',
-  '9#|#3o$3-#|#3o$3-#|5#-$##|4-#--#|4-#$-#|4-#-$#|4-#$-#|4-#@-#|4-4#',
-  '12-5#|12-#3-#|-12#-#-#|-#o10-!--#|-12#-3#|5-#3-#--#-#|5-#-$@#--#-#|5-#3-#--#-#|8#$4#-3#|#--!9-!--#|#-#-4#--3#-#-#|#3-#--#o-#-#3-#|5#--4#-5#',
-  '4-5#|5#3o#|#-$5-#|#3-#$--#|5#--##|#-@-#$$#|#3-#--#|#3-#$-##|##--$3-#|#3o#3-#|9#',
-  '10#|#o#4-@-#|#o#$$#-$-#|#o#--#$-##|#o$--#-$#|#o#--#--#|#o#5-#|#4-#--#|#--6#|4#',
+  '11#|#@-$5-o#|11#',   # 0
+  '--3#|3#o#|#o$$##|##@$o#|-5#',    # 1
+  '3-4#|3-#--#|3-#--#|3-#-$##|5#--3#|#-!5-+#|#3-6#|5#', # 2
+  '7#|#--o--#|#-$o--#|#--#$-#|#-$#--#|#--o$-#|#@-o--#|7#', # 3
+  '8#|#--@#-o#|#-3#--#|#-#o#$-#|#3-#--#|3#$#--#|--#-$--#|--#--o-#|--#--3#|--4#',    # 4
+  '5#|#3-7#|#-#-##--oo#|#-$--$-o!o#|3#--#-!oo#|--#-7#|--#-#4-#|--#-#-$$-#|--#-$-$@-#|--#3-4#|--5#', # 5 (nope)
+  '8#|#@-#3-#|##$#3-#|#--#3-#|#--##$##|#-o--o-#|#--#3-#|8#', # 6
+  '-6#|##4-#|#--##$#|#5-3#|##-#-oo+#|-#$7#|-#-#5-#|##-#-#$#-#|#--#5-#|#5-4#|#3-3#|5#', # 7
+  '7#|#3o$-##|#3o3-#|##-$-$-#|-3#-3#|-#@$-$-#|-#-$3-#|-#4-##|-6#', # 8 (subóptimo)
+  '12#|#@-#--$-3o#|##$#$-$-3o#|#3-$6-#|#9-$#|8#3-#|7-5#', # 9
+  '6#|#o#-@#|#o#$-##|#o#-$-#|#-$3-#|#3-3#|5#', # 10
+  '9#|#3o$3-#|#3o$3-#|5#-$##|4-#--#|4-#$-#|4-#-$#|4-#$-#|4-#@-#|4-4#', # 11
+  '12-5#|12-#3-#|-12#-#-#|-#o10-!--#|-12#-3#|5-#3-#--#-#|5-#-$@#--#-#|5-#3-#--#-#|8#$4#-3#|#--!9-!--#|#-#-4#--3#-#-#|#3-#--#o-#-#3-#|5#--4#-5#', # 12
+  '4-5#|5#3o#|#-$5-#|#3-#$--#|5#--##|#-@-#$$#|#3-#--#|#3-#$-##|##--$3-#|#3o#3-#|9#', # 13
+  '10#|#o#4-@-#|#o#$$#-$-#|#o#--#$-##|#o$--#-$#|#o#--#--#|#o#5-#|#4-#--#|#--6#|4#', # 14
   '7#|#o#3-#|#o#-$-#|#@--$-#|#o-$$-#|#o#-$-#|#o#3-#|7#',
   '6#|#4-#|#-$--#|#-$@-#|#-#!##-4#|#-#o##-#--#|#--!-#-#$-#|#-#o-#-#--#|#-#o-#-#-3#|#-#o-3#3-#|#8-$-#|3#--7#|--4#',
   '3-4#|3-#--7#|3-#3-$4-#|3-#--3#-$-#|-3#--#-#$--#|-#@3-#-#-$-#|-##$$-#-#--$#|##-$--#-#--o#|#o-#--#-5#|#5o#|#-o4#|4#',
@@ -348,12 +345,12 @@ def main(win):
 
     mode = 0 if len(sys.argv) == 1 else sys.argv[1]
     levelidx = 0 if len(sys.argv) == 1 else (randint(0, len(levels)) if sys.argv[2] == 'random' else int(sys.argv[2]))
-    print(f"Solving level {levelidx}")
     sokoban = Sokoban(Sokoban.parse(levels[levelidx]))
 
     if mode == 'solve':
         try:
             root = Node(sokoban)
+            print(f"Solving level {levelidx}")
             win.addstr('Hold on...')
             win.addstr(levels[levelidx])
             node, count = root.astar()
@@ -407,8 +404,8 @@ def main(win):
                 win.addstr('\n')
                 win.addstr("goals: " + str(sokoban.goals))
                 win.addstr('\n')
-                win.addstr(str(sokoban.heu()))
-                win.addstr(f"you've moved {moves} times")
+                win.addstr(str(sokoban.heu()) if sokoban.heu() != 0 else "\nYou won!")
+                win.addstr(f" \nYou've moved {moves} times")
                 if(sokoban.stuck()):
                     win.addstr("\nYou're stuck!")
             except Exception as e:  

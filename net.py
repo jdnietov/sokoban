@@ -10,7 +10,7 @@ class Node:
         self.parent = parent
         self.depth = parent.depth + 1 if parent else 0
         Node._ID = Node._ID + 1
-    
+
     def __lt__(self, other):
         return (self.depth + self.puzzle.heu()) < (other.depth + other.puzzle.heu())
     
@@ -28,25 +28,26 @@ class Node:
         q, visited = [self], set()
         heapq.heapify(q)
         counter = 0
+        minimal = 100000
         
         while q:
             node = heapq.heappop(q)
 
-            if node not in visited:
+            if node.puzzle not in visited:
                 counter += 1
                 if (goal is not None and node.puzzle == goal) or (goal is None and node.puzzle.heu() == 0):
                     return (node, counter)
-                if counter % 1000 == 0:
+                if node.puzzle.heu() < minimal:
                     f = open("demofile2.txt", "a")
-                    f.write(str(len(q)) + " " + str(node.puzzle.heu()) + "\n")
+                    f.write(f"{str([n.puzzle.heu() for n in q[:5]])} {str(node.puzzle.heu())} {str(len(q))}\n")
                     f.close()
+                    minimal = node.puzzle.heu()
                 
                 visited.add(node.puzzle)
                 node.expand()
                 for child in node.children:
                     if child.puzzle not in visited:
                         heapq.heappush(q, child)
-                    
         
         return None
     
@@ -61,6 +62,3 @@ class Node:
             node = node.parent
 
         return stack
-        # print(len(stack), 'FOUNDFOUNDmoves were required.')
-        # while len(stack) > 0:
-        #     print(stack.pop())
